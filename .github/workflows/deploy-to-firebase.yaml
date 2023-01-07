@@ -1,0 +1,39 @@
+name: Build and deploy to Firebase
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   # 12pm UTC is 4am PST
+  #   - cron: '0 12 * * *'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'package.json'
+  #     - 'firebase.json'
+  #     - 'src/**'
+
+jobs:
+  deploy:
+    name: Setup, build, publish, and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Use Node 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: "npm"
+
+      - name: Install NPM dependencies
+        run: npm install --loglevel=error --no-audit
+
+      - name: Deploy to Firebase
+        env:
+          BUNGIE_API_KEY: ${{ secrets.BUNGIE_API_KEY }}
+        run: |-
+          echo '${{ secrets.GCP_SA_KEY }}' > $HOME/gcp-sa-key.json
+          GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcp-sa-key.json" npm run firebase -- deploy
