@@ -21,7 +21,12 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["src/**/*.ts", "src/**/*.tsx"],
+      files: [
+        "functions/**/*.ts",
+        "functions/**/*.tsx",
+        "hosting/**/*.ts",
+        "hosting/**/*.tsx",
+      ],
       parser: "@typescript-eslint/parser",
       extends: [
         "plugin:import/typescript",
@@ -29,7 +34,7 @@ module.exports = {
       ],
       plugins: ["@typescript-eslint", "import"],
       parserOptions: {
-        project: ["tsconfig.json"],
+        project: ["functions/tsconfig.json", "hosting/tsconfig.json"],
         sourceType: "module",
       },
       rules: {
@@ -38,6 +43,14 @@ module.exports = {
           { prefer: "type-imports" },
         ],
       },
+    },
+    {
+      files: ["hosting/**/*.ts", "hosting/**/*.tsx"],
+      rules: {},
+    },
+    {
+      files: ["functions/**/*.ts", "functions/**/*.tsx"],
+      rules: {},
     },
   ],
 };
