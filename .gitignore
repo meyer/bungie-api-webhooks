@@ -3,3 +3,4 @@
 /.firebase
 *.log
 /emulator-cache
+/functions/lib

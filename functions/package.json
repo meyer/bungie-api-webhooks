@@ -1,28 +1,31 @@
 {
-  "name": "bungie-api-webhooks",
+  "name": "bungie-api-webhooks-functions",
   "private": true,
+  "type": "module",
   "main": "lib/index.js",
   "engines": {
     "node": "16"
   },
-  "workspaces": [
-    "functions"
-  ],
   "scripts": {
-    "firebase": "firebase",
-    "lint": "eslint --ext .js,.ts .",
-    "start-emulators": "firebase emulators:start --import=emulator-cache --export-on-exit",
-    "shell": "firebase functions:shell",
+    "build": "rm -rf lib/* && tsc",
+    "build:watch": "tsc --watch",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
     "logs": "firebase functions:log"
   },
   "dependencies": {
-    "firebase-tools": "11.17.0"
+    "@google-cloud/pubsub": "^3.2.1",
+    "bungie-api-ts": "^4.21.0",
+    "firebase-admin": "^11.4.1",
+    "firebase-functions": "^4.1.1",
+    "node-fetch": "^3.3.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
     "eslint": "^8.9.0",
     "eslint-plugin-import": "^2.25.4",
+    "firebase-functions-test": "^0.2.0",
     "eslint-plugin-simple-import-sort": "^8.0.0",
     "typescript": "^4.5.4"
   }
