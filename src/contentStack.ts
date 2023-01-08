@@ -11,12 +11,23 @@ import {
   getObject,
 } from "./typePredicates.js";
 
-export const getLatestArticlesFromContentStack = async () => {
+export type ContentStackArticle = Awaited<
+  ReturnType<typeof getLatestArticlesFromContentStack>
+>[number];
+
+export type ContentStackSettings = Awaited<
+  ReturnType<typeof getContentStackSettings>
+>;
+
+export const getContentStackSettings = async () => {
   const settings = await bungieGetCommonSettings();
 
   // ContentStack API key lives here
   const contentstackParams = settings.systems.ContentStack?.parameters;
-  assert(typeof contentstackParams === "object", "ContentStack params missing");
+  assert(
+    typeof contentstackParams === "object" && settings.systems.ContentStack,
+    "ContentStack params missing"
+  );
 
   // "ApiKey": "xxxxxxxxxxxxxxxxxxxxxx",
   // "EnvPlusDeliveryToken": "{live}{xxxxxxxxxxxxxxxxxxx}"
@@ -35,6 +46,17 @@ export const getLatestArticlesFromContentStack = async () => {
   );
 
   const [, csEnv, csDeliveryToken] = match;
+  // these should always be set but TypeScript doesn't speak regex
+  assert(csEnv && csDeliveryToken, "envPlusDeliveryTokenRegex error");
+
+  return { csEnv, csDeliveryToken, csApiKey };
+};
+
+export const getLatestArticlesFromContentStack = async ({
+  csApiKey,
+  csDeliveryToken,
+  csEnv,
+}: ContentStackSettings) => {
   const csUrl = format(
     "https://graphql.contentstack.com/stacks/%s?environment=%s",
     csApiKey,
@@ -94,7 +116,7 @@ query ($limit: Int) {
     const url = path.join("https://www.bungie.net/7/en/news/article", item.url);
 
     // common article fields
-    const articleWithDefaults = { ...item, url, type: "news" };
+    const articleWithDefaults = { ...item, date, url, type: "news" };
 
     const dateString = date.toLocaleDateString("en-US", {
       month: "long",

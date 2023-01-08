@@ -1,10 +1,14 @@
-import { PubSub } from "@google-cloud/pubsub";
+import assert from "assert";
+import { Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 
-import { getLatestArticlesFromContentStack } from "../contentStack.js";
-
-// Creates a client; cache this for further use
-const pubSubClient = new PubSub();
+import type { ContentStackSettings } from "../contentStack.js";
+import {
+  getContentStackSettings,
+  getLatestArticlesFromContentStack,
+} from "../contentStack.js";
+import { firestore } from "../firestore.js";
+import { assertIsObject } from "../typePredicates.js";
 
 export const getLatestArticles = functions
   .runWith({
@@ -13,26 +17,52 @@ export const getLatestArticles = functions
     timeoutSeconds: 540,
   })
   .https.onRequest(async (req, res) => {
-    const news = await getLatestArticlesFromContentStack();
+    let csSettings: ContentStackSettings;
 
-    for (const item of news) {
-      // Publishes the message as a string, e.g. "Hello, world!" or JSON.stringify(someObject)
-      const dataBuffer = Buffer.from(JSON.stringify(item));
+    const csSettingsDoc = await firestore
+      .collection("settings")
+      .doc("contentstack");
 
+    try {
+      csSettings = await getContentStackSettings();
+    } catch (error) {
+      functions.logger.error(
+        "Could not fetch ContentStack settings. Is the Bungie API down? Error: %o",
+        error
+      );
       try {
-        const messageId = await pubSubClient
-          .topic("news-updates")
-          .publishMessage({
-            data: dataBuffer,
-            attributes: {
-              uid: item.uid,
-            },
-          });
-        functions.logger.info(`Message ${messageId} published.`);
+        const csSettingsSnapshot = await csSettingsDoc.get();
+        const docData = csSettingsSnapshot.data();
+        assert(docData, "Cached settings could not be fetched");
+        assertIsObject(docData);
+        const { csEnv, csDeliveryToken, csApiKey } = docData;
+        assert(typeof csEnv === "string");
+        assert(typeof csDeliveryToken === "string");
+        assert(typeof csApiKey === "string");
+        csSettings = { csEnv, csDeliveryToken, csApiKey };
       } catch (error) {
-        functions.logger.error("Received error while publishing:", error);
+        functions.logger.error(
+          "Could not fetch ContentStack settings from Firestore: %o",
+          error
+        );
+        throw new Error("Could not fetch ContentStack settings from Firestore");
       }
     }
 
-    res.json(news);
+    const articles = await getLatestArticlesFromContentStack(csSettings);
+    const articleCollection = firestore.collection("articles");
+    const batch = firestore.batch();
+    for (const article of articles) {
+      const articleRef = articleCollection.doc(article.uid);
+      batch.set(articleRef, {
+        ...article,
+        date: Timestamp.fromDate(article.date),
+      });
+    }
+    batch.set(csSettingsDoc, csSettings);
+    await batch.commit();
+
+    res.json({
+      status: 200,
+    });
   });

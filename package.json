@@ -2,16 +2,16 @@
   "name": "bungie-api-webhooks",
   "private": true,
   "type": "module",
+  "main": "lib/index.js",
   "engines": {
     "node": "16"
   },
-  "main": "lib/index.js",
   "scripts": {
     "firebase": "firebase",
     "lint": "eslint --ext .js,.ts .",
-    "build": "rm -rf lib && tsc",
+    "build": "rm -rf lib/* && tsc",
     "build:watch": "tsc --watch",
-    "serve": "npm run build && firebase emulators:start",
+    "serve": "npm run build && firebase emulators:start --import=emulator-cache --export-on-exit",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "logs": "firebase functions:log"
