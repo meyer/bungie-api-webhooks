@@ -16,6 +16,8 @@
   "dependencies": {
     "@google-cloud/pubsub": "^3.2.1",
     "bungie-api-ts": "^4.21.0",
+    "firebase-admin": "^11.4.1",
+    "firebase-functions": "^4.1.1",
     "node-fetch": "^3.3.0"
   }
 }
