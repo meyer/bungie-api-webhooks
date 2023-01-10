@@ -116,7 +116,7 @@ query ($limit: Int) {
     const url = path.join("https://www.bungie.net/7/en/news/article", item.url);
 
     // common article fields
-    const articleWithDefaults = { ...item, date, url, type: "news" };
+    const articleWithDefaults = { ...item, date, url, type: "news" } as const;
 
     const dateString = date.toLocaleDateString("en-US", {
       month: "long",
@@ -132,7 +132,7 @@ query ($limit: Int) {
         ...articleWithDefaults,
         type: "twab",
         title: twabTitle,
-      };
+      } as const;
     }
 
     const hotfixMatch = item.title.match(hotfixRegex);
@@ -143,7 +143,7 @@ query ($limit: Int) {
         type: "hotfix",
         hotfixNumber: hotfixMatch[1],
         title: hotfixTitle,
-      };
+      } as const;
     }
 
     const updateMatch = item.title.match(updateRegex);
@@ -154,7 +154,7 @@ query ($limit: Int) {
         type: "update",
         updateNumber: updateMatch[1],
         title: updateTitle,
-      };
+      } as const;
     }
 
     return articleWithDefaults;
