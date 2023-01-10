@@ -3,6 +3,11 @@
     "module": "NodeNext",
     "noImplicitReturns": true,
     "noUnusedLocals": true,
+    "lib": [
+      "ESNext",
+      // not great but node-fetch uses globals that are now DOM-only
+      "DOM"
+    ],
     "outDir": "lib",
     "sourceMap": true,
     "strict": true,
