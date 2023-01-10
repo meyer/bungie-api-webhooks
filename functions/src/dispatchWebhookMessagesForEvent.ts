@@ -1,6 +1,6 @@
 import { PubSub } from "@google-cloud/pubsub";
 import assert from "assert";
-import * as functions from "firebase-functions";
+import functions from "firebase-functions";
 
 import type { ContentStackArticle } from "./contentStack.js";
 import { firestore } from "./firestore.js";

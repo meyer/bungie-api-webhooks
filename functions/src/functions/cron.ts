@@ -35,11 +35,44 @@ export const checkBungie = functions
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
-    const result = await promiseMap({
-      apiStatus: updateApiStatus,
-      manifestVersion: updateManifestVersion,
+    const { apiResult, manifestResult } = await promiseMap({
+      apiResult: updateApiStatus,
+      manifestResult: updateManifestVersion,
     });
-    functions.logger.info("Bungie cron result:", result);
+
+    if (apiResult.type === "error") {
+      functions.logger.error("API status error: %s", apiResult.message);
+    } else {
+      const status = apiResult.content.isEnabled ? "enabled" : "disabled";
+      const didChange = apiResult.content.statusWasUpdated
+        ? "updated"
+        : "unchanged";
+
+      functions.logger.info(
+        "API status: %s (%s)",
+        status,
+        didChange,
+        apiResult.content
+      );
+    }
+
+    if (manifestResult.type === "error") {
+      functions.logger.error(
+        "Manifest version error: %s",
+        manifestResult.message
+      );
+    } else {
+      const didChange = manifestResult.content.versionWasUpdated
+        ? "updated"
+        : "unchanged";
+
+      functions.logger.info(
+        "Manifest version: %s (%s)",
+        manifestResult.content.manifestVersion,
+        didChange,
+        manifestResult.content
+      );
+    }
   });
 
 export const checkArticlesThursday = functions

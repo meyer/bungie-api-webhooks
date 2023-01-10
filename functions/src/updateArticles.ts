@@ -1,6 +1,6 @@
 import assert from "assert";
 import { Timestamp } from "firebase-admin/firestore";
-import * as functions from "firebase-functions";
+import functions from "firebase-functions";
 
 import type { ContentStackSettings } from "./contentStack.js";
 import {
