@@ -26,10 +26,7 @@ export const getLatestArticles = functions
     try {
       csSettings = await getContentStackSettings();
     } catch (error) {
-      functions.logger.error(
-        "Could not fetch ContentStack settings. Is the Bungie API down? Error: %o",
-        error
-      );
+      functions.logger.error("Could not fetch ContentStack settings", error);
       try {
         const csSettingsSnapshot = await csSettingsDoc.get();
         const docData = csSettingsSnapshot.data();

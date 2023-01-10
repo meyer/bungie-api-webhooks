@@ -1,17 +1,27 @@
 import assert from "assert";
 import { getCommonSettings } from "bungie-api-ts/core";
-import type { ServerResponse } from "bungie-api-ts/destiny2";
 import {
   type HttpClient,
+  type ServerResponse,
   getDestinyManifest,
-  getProfile,
+  PlatformErrorCodes,
 } from "bungie-api-ts/destiny2";
 import nodeFetch, { type RequestInit } from "node-fetch";
 
+export class BungieApiError extends Error {
+  constructor(
+    public errorCode: PlatformErrorCodes,
+    public errorStatus: string,
+    public apiResponse: ServerResponse<unknown>
+  ) {
+    super(errorCode + ": " + errorStatus);
+  }
+}
+
 const bungieHttpClient: HttpClient = async (config) => {
   const { BUNGIE_API_KEY, BUNGIE_API_ORIGIN } = process.env;
-  assert(typeof BUNGIE_API_KEY === "string");
-  assert(typeof BUNGIE_API_ORIGIN === "string");
+  assert(typeof BUNGIE_API_KEY === "string", "BUNGIE_API_KEY is not set");
+  assert(typeof BUNGIE_API_ORIGIN === "string", "BUNGIE_API_ORIGIN is not set");
 
   const url = new URL(config.url);
   if (config.params) {
@@ -34,7 +44,23 @@ const bungieHttpClient: HttpClient = async (config) => {
 
   const response = await nodeFetch(url.toString(), requestConfig);
 
-  return await response.json();
+  const jsonResponse = (await response.json()) as ServerResponse<unknown>;
+
+  if (
+    typeof jsonResponse === "object" &&
+    jsonResponse &&
+    "ErrorCode" in jsonResponse &&
+    "ErrorStatus" in jsonResponse &&
+    jsonResponse.ErrorCode === PlatformErrorCodes.SystemDisabled
+  ) {
+    throw new BungieApiError(
+      jsonResponse.ErrorCode,
+      jsonResponse.ErrorStatus,
+      jsonResponse
+    );
+  }
+
+  return jsonResponse;
 };
 
 type BungieApiFunction = (
@@ -61,4 +87,3 @@ const getApiFunction =
 
 export const bungieGetDestinyManifest = getApiFunction(getDestinyManifest);
 export const bungieGetCommonSettings = getApiFunction(getCommonSettings);
-export const bungieGetProfile = getApiFunction(getProfile);
