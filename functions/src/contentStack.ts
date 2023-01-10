@@ -1,6 +1,5 @@
 import assert from "assert";
 import nodeFetch from "node-fetch";
-import path from "path";
 import { format } from "util";
 
 import { bungieGetCommonSettings } from "./bungieApi.js";
@@ -113,10 +112,10 @@ query ($limit: Int) {
 
   return articles.map((item) => {
     const date = new Date(item.date);
-    const url = path.join("https://www.bungie.net/7/en/news/article", item.url);
+    const url = "https://www.bungie.net/7/en/news/article" + item.url;
 
     // common article fields
-    const articleWithDefaults = { ...item, date, url, type: "news" } as const;
+    const articleWithDefaults = { ...item, url, type: "news" } as const;
 
     const dateString = date.toLocaleDateString("en-US", {
       month: "long",

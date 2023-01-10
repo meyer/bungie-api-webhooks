@@ -8,6 +8,7 @@ import { format } from "util";
 
 import type { ContentStackArticle } from "../contentStack.js";
 import { firestore } from "../firestore.js";
+import { getDiscordTimestamp } from "../getDiscordTImestamp.js";
 import { assertIsObject } from "../typePredicates.js";
 
 const pubSubClient = new PubSub();
@@ -29,18 +30,22 @@ interface ApiStatusEvent {
 
 interface WebhookEventsByName {
   apiStatus: ApiStatusEvent;
-  articleUpdate: ArticleCreateEvent;
+  articleCreate: ArticleCreateEvent;
   manifestUpdate: ManifestUpdateEvent;
 }
 
-interface WebhookMessageJson {
-  payload:
-    | WebhookEventsByName[keyof WebhookEventsByName]
-    | RESTPostAPIWebhookWithTokenJSONBody;
+type WebhookEvent = {
+  [K in keyof WebhookEventsByName]: {
+    eventName: K;
+    event: WebhookEventsByName[K];
+  };
+}[keyof WebhookEventsByName];
+
+type WebhookMessageJson = {
   url: string;
-  eventName: keyof WebhookEventsByName;
   headers: Record<string, unknown> | undefined;
-}
+  format?: string;
+} & WebhookEvent;
 
 interface WebhookMessageAttributes {
   [key: string]: string;
@@ -48,10 +53,12 @@ interface WebhookMessageAttributes {
   dispatchTimestamp: string;
 }
 
-const dispatchWebhookMessagesForEvent = async (
-  eventName: keyof WebhookEventsByName,
+const dispatchWebhookMessagesForEvent = async <
+  T extends keyof WebhookEventsByName
+>(
+  eventName: T,
   context: functions.EventContext,
-  payload: WebhookEventsByName[typeof eventName]
+  event: WebhookEventsByName[T]
 ): Promise<void> => {
   const webhooksCollectionRef = firestore.collection("webhooks");
 
@@ -68,12 +75,13 @@ const dispatchWebhookMessagesForEvent = async (
   const webhookDocPromises = webhookDocs.docs.map(async (doc) => {
     const webhookId = doc.id;
 
+    const docData = doc.data() as Record<string, unknown>;
+
     const {
       format: webhookFormat,
       url: webhookUrl,
       headers: webhookHeaders,
-    } = doc.data() as Record<string, unknown>;
-
+    } = docData;
     assert(typeof webhookUrl === "string", "webhookUrl is not a string");
 
     let headers: Record<string, unknown> | undefined;
@@ -82,28 +90,20 @@ const dispatchWebhookMessagesForEvent = async (
       headers = webhookHeaders;
     }
 
-    let formattedPayload:
-      | WebhookEventsByName[keyof WebhookEventsByName]
-      | RESTPostAPIWebhookWithTokenJSONBody = payload;
-    if (webhookFormat === "discord") {
-      // TODO(meyer) make this look nice
-      const discordPayload: RESTPostAPIWebhookWithTokenJSONBody = {
-        username: "Bungie API webhooks",
-        content: format(
-          "%s: ```json\n%s\n```",
-          eventName,
-          JSON.stringify(payload, null, 2)
-        ),
-      };
-      formattedPayload = discordPayload;
+    let format: string | undefined;
+    if (webhookFormat) {
+      assert(typeof webhookFormat === "string");
+      format = webhookFormat;
     }
 
     try {
+      // @ts-expect-error unnarrowed union
       const messageJson: WebhookMessageJson = {
-        payload: formattedPayload,
+        event,
         url: webhookUrl,
         eventName,
         headers,
+        format,
       };
 
       const messageAttributes: WebhookMessageAttributes = {
@@ -153,17 +153,53 @@ export const webhookMessagePublished = functions.pubsub
     const messageAttributes: WebhookMessageAttributes =
       message.attributes as any;
 
-    const { payload, url, eventName, headers: webhookHeaders } = messageJson;
+    const {
+      event,
+      url,
+      eventName,
+      headers,
+      format: webhookFormat,
+    } = messageJson;
     const { webhookId, dispatchTimestamp } = messageAttributes;
 
-    let headers: Record<string, unknown> | null = null;
-    if (webhookHeaders) {
-      assertIsObject(webhookHeaders);
-      headers = webhookHeaders;
+    let payload: unknown = event;
+    if (webhookFormat === "discord") {
+      const discordPayload: RESTPostAPIWebhookWithTokenJSONBody = {};
+      if (eventName === "apiStatus") {
+        discordPayload.username = "Bungie API status";
+        discordPayload.content =
+          "The API is now " + (event.isEnabled ? "enabled" : "disabled") + ".";
+      } else if (eventName === "articleCreate") {
+        const articleDate = new Date(event.article.date);
+
+        discordPayload.username = event.article.author;
+        discordPayload.content = format(
+          `%s
+
+%s
+
+_posted %s (%s)_
+_ _`,
+          event.article.subtitle,
+          event.article.url,
+          getDiscordTimestamp(articleDate, "shortDateTime"),
+          getDiscordTimestamp(articleDate, "relative")
+        );
+      } else if (eventName === "manifestUpdate") {
+        discordPayload.username = "Bungie API manifest update";
+        discordPayload.content = format(
+          "Manifest version has changed from `%s` to `%s`",
+          event.oldVersion,
+          event.newVersion
+        );
+      } else {
+        throw new Error("Unhandled event name: " + eventName);
+      }
+      payload = discordPayload;
     }
 
     try {
-      const webhookResult = await nodeFetch(url, {
+      await nodeFetch(url, {
         method: "POST",
         headers: {
           ...headers,
@@ -171,7 +207,6 @@ export const webhookMessagePublished = functions.pubsub
         },
         body: JSON.stringify(payload),
       });
-      functions.logger.info("webhookResult:", webhookResult);
     } catch (error) {
       functions.logger.error("Could not call webhook %s: %o", webhookId, error);
       throw error;
@@ -216,7 +251,7 @@ export const articleCreate = functions.firestore
   .onCreate(async (snapshot, context) => {
     const article = snapshot.data() as ContentStackArticle;
     functions.logger.info("Article %s published", context.params.uid, article);
-    await dispatchWebhookMessagesForEvent("articleUpdate", context, {
+    await dispatchWebhookMessagesForEvent("articleCreate", context, {
       uid: context.params.uid,
       article,
     });

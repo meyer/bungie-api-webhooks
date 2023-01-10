@@ -53,7 +53,7 @@ export const getLatestArticles = functions
       const articleRef = articleCollection.doc(article.uid);
       batch.set(articleRef, {
         ...article,
-        date: Timestamp.fromDate(article.date),
+        dateTimestamp: Timestamp.fromDate(new Date(article.date)),
       });
     }
     batch.set(csSettingsDoc, csSettings);
