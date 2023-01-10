@@ -15,7 +15,8 @@ module.exports = {
   plugins: ["simple-import-sort"],
   ignorePatterns: ["/lib/**/*"],
   rules: {
-    "import/no-unresolved": 0,
+    "import/no-unresolved": "off",
+    "no-prototype-builtins": "off",
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
   },
