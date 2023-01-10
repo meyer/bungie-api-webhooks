@@ -1,10 +1,14 @@
 import { PubSub } from "@google-cloud/pubsub";
 import assert from "assert";
+import type { RESTPostAPIWebhookWithTokenJSONBody } from "discord-api-types/v10";
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
+import nodeFetch from "node-fetch";
+import { format } from "util";
 
 import type { ContentStackArticle } from "../contentStack.js";
 import { firestore } from "../firestore.js";
+import { assertIsObject } from "../typePredicates.js";
 
 const pubSubClient = new PubSub();
 const webhookPubsubTopic = "dispatched-webhooks";
@@ -14,63 +18,117 @@ interface ManifestUpdateEvent {
   newVersion: string;
 }
 
-interface ArticleUpdateEvent {
+interface ArticleCreateEvent {
   uid: string;
   article: ContentStackArticle;
 }
 
 interface ApiStatusEvent {
-  oldStatus: boolean;
-  newStatus: boolean;
+  isEnabled: boolean;
 }
 
-interface WebhookThings {
+interface WebhookEventsByName {
   apiStatus: ApiStatusEvent;
-  articleUpdate: ArticleUpdateEvent;
+  articleUpdate: ArticleCreateEvent;
   manifestUpdate: ManifestUpdateEvent;
 }
 
+interface WebhookMessageJson {
+  payload:
+    | WebhookEventsByName[keyof WebhookEventsByName]
+    | RESTPostAPIWebhookWithTokenJSONBody;
+  url: string;
+  eventName: keyof WebhookEventsByName;
+  headers: Record<string, unknown> | undefined;
+}
+
+interface WebhookMessageAttributes {
+  [key: string]: string;
+  webhookId: string;
+  dispatchTimestamp: string;
+}
+
 const dispatchWebhookMessagesForEvent = async (
-  event: keyof WebhookThings,
+  eventName: keyof WebhookEventsByName,
   context: functions.EventContext,
-  payload: WebhookThings[typeof event]
+  payload: WebhookEventsByName[typeof eventName]
 ): Promise<void> => {
   const webhooksCollectionRef = firestore.collection("webhooks");
 
   const webhookDocs = await webhooksCollectionRef
-    .where("events", "array-contains-any", [event])
+    .where("events", "array-contains-any", [eventName])
     .get();
 
   functions.logger.info(
     "%s webhook matches for event %s",
     webhookDocs.size,
-    event
+    eventName
   );
 
   const webhookDocPromises = webhookDocs.docs.map(async (doc) => {
     const webhookId = doc.id;
+
+    const {
+      format: webhookFormat,
+      url: webhookUrl,
+      headers: webhookHeaders,
+    } = doc.data() as Record<string, unknown>;
+
+    assert(typeof webhookUrl === "string", "webhookUrl is not a string");
+
+    let headers: Record<string, unknown> | undefined;
+    if (webhookHeaders) {
+      assertIsObject(webhookHeaders);
+      headers = webhookHeaders;
+    }
+
+    let formattedPayload:
+      | WebhookEventsByName[keyof WebhookEventsByName]
+      | RESTPostAPIWebhookWithTokenJSONBody = payload;
+    if (webhookFormat === "discord") {
+      // TODO(meyer) make this look nice
+      const discordPayload: RESTPostAPIWebhookWithTokenJSONBody = {
+        username: "Bungie API webhooks",
+        content: format(
+          "%s: ```json\n%s\n```",
+          eventName,
+          JSON.stringify(payload, null, 2)
+        ),
+      };
+      formattedPayload = discordPayload;
+    }
+
     try {
+      const messageJson: WebhookMessageJson = {
+        payload: formattedPayload,
+        url: webhookUrl,
+        eventName,
+        headers,
+      };
+
+      const messageAttributes: WebhookMessageAttributes = {
+        webhookId,
+        dispatchTimestamp: context.timestamp,
+      };
+
       const messageId = await pubSubClient
         .topic(webhookPubsubTopic)
         .publishMessage({
-          json: payload,
-          attributes: {
-            event,
-            webhookId,
-            dispatchTimestamp: context.timestamp,
-          },
+          json: messageJson,
+          attributes: messageAttributes,
         });
       functions.logger.info(
         "Dispatched message %s for webhook %s (%s)",
         messageId,
         webhookId,
-        event
+        eventName
       );
     } catch (error) {
       functions.logger.error(
         "Could not dispatch message for webhook %s (%s)",
         webhookId,
-        event
+        eventName,
+        error
       );
     }
   });
@@ -91,20 +149,33 @@ export const webhookMessagePublished = functions.pubsub
       }
     );
 
-    const { event, webhookId, dispatchTimestamp } = message.attributes;
-    const payload = message.json;
-    assert(
-      typeof event === "string",
-      "context.params does not contain a valid event"
-    );
-    assert(
-      typeof webhookId === "string",
-      "context.params does not contain a valid webhookId"
-    );
-    assert(
-      typeof dispatchTimestamp === "string",
-      "context.params does not contain a valid dispatchTimestamp"
-    );
+    const messageJson: WebhookMessageJson = message.json;
+    const messageAttributes: WebhookMessageAttributes =
+      message.attributes as any;
+
+    const { payload, url, eventName, headers: webhookHeaders } = messageJson;
+    const { webhookId, dispatchTimestamp } = messageAttributes;
+
+    let headers: Record<string, unknown> | null = null;
+    if (webhookHeaders) {
+      assertIsObject(webhookHeaders);
+      headers = webhookHeaders;
+    }
+
+    try {
+      const webhookResult = await nodeFetch(url, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      functions.logger.info("webhookResult:", webhookResult);
+    } catch (error) {
+      functions.logger.error("Could not call webhook %s: %o", webhookId, error);
+      throw error;
+    }
 
     const docRef = firestore.collection("webhooks").doc(webhookId);
     const docSnapshot = await docRef.get();
@@ -129,7 +200,7 @@ export const webhookMessagePublished = functions.pubsub
 
     const updatedHistory = [
       {
-        event,
+        eventName,
         responseTimestamp: Timestamp.fromDate(new Date(context.timestamp)),
         dispatchTimestamp: Timestamp.fromDate(new Date(dispatchTimestamp)),
         payload,
@@ -201,8 +272,7 @@ export const metadataUpdate = functions.firestore
         functions.logger.info("Previously enabled: %s", beforeData?.isEnabled);
         functions.logger.info("Currently enabled: %s", afterData.isEnabled);
         await dispatchWebhookMessagesForEvent("apiStatus", context, {
-          oldStatus: !!beforeData?.isEnabled,
-          newStatus: !!afterData.isEnabled,
+          isEnabled: !!afterData.isEnabled,
         });
         return;
       }
