@@ -31,7 +31,7 @@ jobs:
       - name: Fetch next.js build folder from the cache
         uses: actions/cache@v3
         with:
-          path: ${{ github.workspace }}/.next/cache
+          path: ${{ github.workspace }}/.firebase/bungie-api-webhooks/functions/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.ts', '**.tsx') }}
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
