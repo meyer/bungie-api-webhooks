@@ -8,7 +8,7 @@ import { updateManifestVersion } from "../updateManifestVersion.js";
 const runtimeOptions: functions.RuntimeOptions = {
   secrets: ["BUNGIE_API_KEY", "BUNGIE_API_ORIGIN"],
   // Firebase max is 9 minutes
-  timeoutSeconds: 540,
+  timeoutSeconds: 60,
 };
 
 // Bungie Time TM
