@@ -129,17 +129,19 @@ _ _`,
       docHistory = [];
     }
 
-    const updatedHistory = [
-      {
-        eventName,
-        status: errorText ? "error" : "success",
-        errorText,
-        responseTimestamp: Timestamp.fromDate(new Date(context.timestamp)),
-        dispatchTimestamp: Timestamp.fromDate(new Date(dispatchTimestamp)),
-        payload,
-      },
-      ...docHistory,
-    ].slice(0, 20);
+    const newHistoryItem: Record<string, unknown> = {
+      eventName,
+      status: errorText ? "error" : "success",
+      responseTimestamp: Timestamp.fromDate(new Date(context.timestamp)),
+      dispatchTimestamp: Timestamp.fromDate(new Date(dispatchTimestamp)),
+      payload,
+    };
+
+    if (errorText) {
+      newHistoryItem.errorText = errorText;
+    }
+
+    const updatedHistory = [newHistoryItem, ...docHistory].slice(0, 20);
 
     await docRef.set({ history: updatedHistory }, { merge: true });
 
