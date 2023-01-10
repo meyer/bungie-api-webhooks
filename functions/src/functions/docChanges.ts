@@ -163,7 +163,7 @@ export const webhookMessagePublished = functions.pubsub
     const { webhookId, dispatchTimestamp } = messageAttributes;
 
     let payload: unknown = event;
-    if (webhookFormat === "discord") {
+    if (webhookFormat === "discord" || webhookFormat === "discordForum") {
       const discordPayload: RESTPostAPIWebhookWithTokenJSONBody = {};
       if (eventName === "apiStatus") {
         discordPayload.username = "Bungie API status";
@@ -173,6 +173,9 @@ export const webhookMessagePublished = functions.pubsub
         const articleDate = new Date(event.article.date);
 
         discordPayload.username = event.article.author;
+        if (webhookFormat === "discordForum") {
+          discordPayload.thread_name = event.article.title;
+        }
         discordPayload.content = format(
           `%s
 
@@ -198,8 +201,9 @@ _ _`,
       payload = discordPayload;
     }
 
+    let errorText: string | undefined;
     try {
-      await nodeFetch(url, {
+      const webhookRequest = await nodeFetch(url, {
         method: "POST",
         headers: {
           ...headers,
@@ -207,9 +211,19 @@ _ _`,
         },
         body: JSON.stringify(payload),
       });
+      if (webhookRequest.status < 200 || webhookRequest.status > 299) {
+        const errorResponseText = await webhookRequest.text();
+        throw new Error(
+          webhookRequest.status +
+            ": " +
+            webhookRequest.statusText +
+            " -- " +
+            errorResponseText.slice(0, 200)
+        );
+      }
     } catch (error) {
       functions.logger.error("Could not call webhook %s: %o", webhookId, error);
-      throw error;
+      errorText = error instanceof Error ? error.message : error + "";
     }
 
     const docRef = firestore.collection("webhooks").doc(webhookId);
@@ -236,6 +250,8 @@ _ _`,
     const updatedHistory = [
       {
         eventName,
+        status: errorText ? "error" : "success",
+        errorText,
         responseTimestamp: Timestamp.fromDate(new Date(context.timestamp)),
         dispatchTimestamp: Timestamp.fromDate(new Date(dispatchTimestamp)),
         payload,
@@ -244,6 +260,10 @@ _ _`,
     ].slice(0, 20);
 
     await docRef.set({ history: updatedHistory }, { merge: true });
+
+    if (errorText) {
+      throw new Error("Could not call webhook " + webhookId + ": " + errorText);
+    }
   });
 
 export const articleCreate = functions.firestore
