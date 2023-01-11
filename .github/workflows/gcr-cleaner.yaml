@@ -26,3 +26,4 @@ jobs:
           args: >-
             -repo=us-central1-docker.pkg.dev/bungie-api-webhooks/gcf-artifacts
             -recursive=true
+            -tag-filter-any "^"
