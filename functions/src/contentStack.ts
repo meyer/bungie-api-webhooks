@@ -89,7 +89,7 @@ query ($limit: Int) {
   }
 }
 `,
-      variables: { limit: 20 },
+      variables: { limit: 10 },
     }),
     method: "POST",
   });
