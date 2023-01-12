@@ -5,17 +5,24 @@ import { updateApiStatus } from "../updateApiStatus.js";
 import { updateArticles } from "../updateArticles.js";
 import { updateManifestVersion } from "../updateManifestVersion.js";
 
-const runtimeOptions: functions.RuntimeOptions = {
-  secrets: ["BUNGIE_API_KEY", "BUNGIE_API_ORIGIN"],
-  // Firebase max is 9 minutes
+const articleCheckRuntimeOptions: functions.RuntimeOptions = {
   timeoutSeconds: 60,
+};
+
+const manualCheckRuntimeOptions: functions.RuntimeOptions = {
+  timeoutSeconds: 60,
+};
+
+const bungieCheckRuntimeOptions: functions.RuntimeOptions = {
+  // fail quickly since this runs frequently
+  timeoutSeconds: 10,
 };
 
 // Bungie Time TM
 const bungieTimeZone = "America/Los_Angeles";
 
 export const checkAll = functions
-  .runWith(runtimeOptions)
+  .runWith(manualCheckRuntimeOptions)
   .https.onRequest(async (req, res) => {
     const result = await promiseMap({
       apiStatus: updateApiStatus,
@@ -26,11 +33,9 @@ export const checkAll = functions
   });
 
 export const checkBungie = functions
-  .runWith({
-    secrets: ["BUNGIE_API_KEY", "BUNGIE_API_ORIGIN"],
-  })
+  .runWith(bungieCheckRuntimeOptions)
   .pubsub.schedule(
-    // every five minutes
+    // every five minutes starting at :02
     "2-59/5 * * * *"
   )
   .timeZone(bungieTimeZone)
@@ -76,7 +81,7 @@ export const checkBungie = functions
   });
 
 export const checkArticlesWeekday = functions
-  .runWith(runtimeOptions)
+  .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
     // every fifteen minutes from 9am to 5pm on Monday-Friday
     "2-59/15 9-17 * * 1-5"
@@ -87,7 +92,7 @@ export const checkArticlesWeekday = functions
   });
 
 export const checkArticlesWeekend = functions
-  .runWith(runtimeOptions)
+  .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
     // every hour at minute 2 and 32 from 9am to 5pm on Saturday and Sunday
     "2,32 9-17 * * 0,6"
@@ -98,7 +103,7 @@ export const checkArticlesWeekend = functions
   });
 
 export const checkArticlesNightly = functions
-  .runWith(runtimeOptions)
+  .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
     // every hour at :02 from 5pm to 9am on every day
     "2 0-9,17-23 * * *"

@@ -1,4 +1,3 @@
-import assert from "assert";
 import { getCommonSettings } from "bungie-api-ts/core";
 import {
   type HttpClient,
@@ -7,6 +6,8 @@ import {
   PlatformErrorCodes,
 } from "bungie-api-ts/destiny2";
 import nodeFetch, { type RequestInit } from "node-fetch";
+
+import { bungieApiKey, bungieApiOrigin } from "./env.js";
 
 export class BungieApiError extends Error {
   constructor(
@@ -19,10 +20,6 @@ export class BungieApiError extends Error {
 }
 
 const bungieHttpClient: HttpClient = async (config) => {
-  const { BUNGIE_API_KEY, BUNGIE_API_ORIGIN } = process.env;
-  assert(typeof BUNGIE_API_KEY === "string", "BUNGIE_API_KEY is not set");
-  assert(typeof BUNGIE_API_ORIGIN === "string", "BUNGIE_API_ORIGIN is not set");
-
   const url = new URL(config.url);
   if (config.params) {
     for (const key in config.params) {
@@ -33,8 +30,8 @@ const bungieHttpClient: HttpClient = async (config) => {
   const requestConfig: RequestInit = {
     method: config.method,
     headers: {
-      "X-API-Key": BUNGIE_API_KEY,
-      Origin: BUNGIE_API_ORIGIN,
+      "X-API-Key": bungieApiKey.value(),
+      Origin: bungieApiOrigin.value(),
     },
   };
 
