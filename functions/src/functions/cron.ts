@@ -1,28 +1,16 @@
 import functions from "firebase-functions";
 
+import { bungieTimeZone } from "../constants.js";
 import { promiseMap } from "../promiseMap.js";
 import { updateApiStatus } from "../updateApiStatus.js";
 import { updateArticles } from "../updateArticles.js";
 import { updateManifestVersion } from "../updateManifestVersion.js";
 
-const articleCheckRuntimeOptions: functions.RuntimeOptions = {
-  timeoutSeconds: 60,
-};
-
-const manualCheckRuntimeOptions: functions.RuntimeOptions = {
-  timeoutSeconds: 60,
-};
-
-const bungieCheckRuntimeOptions: functions.RuntimeOptions = {
-  // fail quickly since this runs frequently
-  timeoutSeconds: 10,
-};
-
-// Bungie Time TM
-const bungieTimeZone = "America/Los_Angeles";
-
 export const checkAll = functions
-  .runWith(manualCheckRuntimeOptions)
+  .runWith({
+    // it's ok if this one takes a while
+    timeoutSeconds: 60,
+  })
   .https.onRequest(async (req, res) => {
     const result = await promiseMap({
       apiStatus: updateApiStatus,
@@ -33,7 +21,10 @@ export const checkAll = functions
   });
 
 export const checkBungie = functions
-  .runWith(bungieCheckRuntimeOptions)
+  .runWith({
+    // fail quickly since this check runs frequently
+    timeoutSeconds: 10,
+  })
   .pubsub.schedule(
     // every five minutes
     "*/5 * * * *"
@@ -78,37 +69,4 @@ export const checkBungie = functions
         manifestResult.content
       );
     }
-  });
-
-export const checkArticlesWeekday = functions
-  .runWith(articleCheckRuntimeOptions)
-  .pubsub.schedule(
-    // every fifteen minutes from 9am to 4:45pm on Monday-Friday
-    "*/15 9-16 * * 1-5"
-  )
-  .timeZone(bungieTimeZone)
-  .onRun(async () => {
-    await updateArticles();
-  });
-
-export const checkArticlesWeekend = functions
-  .runWith(articleCheckRuntimeOptions)
-  .pubsub.schedule(
-    // every half hour from 9am to 4:30pm on Saturday and Sunday
-    "*/30 9-16 * * 0,6"
-  )
-  .timeZone(bungieTimeZone)
-  .onRun(async () => {
-    await updateArticles();
-  });
-
-export const checkArticlesNightly = functions
-  .runWith(articleCheckRuntimeOptions)
-  .pubsub.schedule(
-    // every hour from 5pm to 8am on every day
-    "0 0-8,17-23 * * *"
-  )
-  .timeZone(bungieTimeZone)
-  .onRun(async () => {
-    await updateArticles();
   });
