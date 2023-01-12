@@ -35,8 +35,8 @@ export const checkAll = functions
 export const checkBungie = functions
   .runWith(bungieCheckRuntimeOptions)
   .pubsub.schedule(
-    // every five minutes starting at :02
-    "2-59/5 * * * *"
+    // every five minutes
+    "*/5 * * * *"
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
@@ -83,8 +83,8 @@ export const checkBungie = functions
 export const checkArticlesWeekday = functions
   .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
-    // every fifteen minutes from 9am to 5pm on Monday-Friday
-    "2-59/15 9-17 * * 1-5"
+    // every fifteen minutes from 9am to 4:45pm on Monday-Friday
+    "*/15 9-16 * * 1-5"
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
@@ -94,8 +94,8 @@ export const checkArticlesWeekday = functions
 export const checkArticlesWeekend = functions
   .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
-    // every hour at minute 2 and 32 from 9am to 5pm on Saturday and Sunday
-    "2,32 9-17 * * 0,6"
+    // every half hour from 9am to 4:30pm on Saturday and Sunday
+    "*/30 9-16 * * 0,6"
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
@@ -105,8 +105,8 @@ export const checkArticlesWeekend = functions
 export const checkArticlesNightly = functions
   .runWith(articleCheckRuntimeOptions)
   .pubsub.schedule(
-    // every hour at :02 from 5pm to 9am on every day
-    "2 0-9,17-23 * * *"
+    // every hour from 5pm to 8am on every day
+    "0 0-8,17-23 * * *"
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
