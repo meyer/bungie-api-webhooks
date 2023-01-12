@@ -51,28 +51,45 @@ export const getContentStackSettings = async () => {
   return { csEnv, csDeliveryToken, csApiKey };
 };
 
-export const getLatestArticlesFromContentStack = async ({
-  csApiKey,
-  csDeliveryToken,
-  csEnv,
-}: ContentStackSettings) => {
+const runCsGraphQlQuery = async (
+  settings: ContentStackSettings,
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<Record<string, unknown>> => {
   const csUrl = format(
     "https://graphql.contentstack.com/stacks/%s?environment=%s",
-    csApiKey,
-    csEnv
+    settings.csApiKey,
+    settings.csEnv
   );
 
   const result = await nodeFetch(csUrl, {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      access_token: csDeliveryToken,
+      access_token: settings.csDeliveryToken,
     },
     referrer: "https://www.contentstack.com/",
     body: JSON.stringify({
-      query: `
-query ($limit: Int) {
-  articles: all_news_article(limit: $limit, order_by: created_at_DESC) {
+      query,
+      variables,
+    }),
+    method: "POST",
+  });
+
+  return getObject(await result.json());
+};
+
+export const getLatestArticlesFromContentStack = async (
+  settings: ContentStackSettings
+) => {
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const articlesResponse = await runCsGraphQlQuery(
+    settings,
+    `
+query ($date: String) {
+  articles: all_news_article(where: {date_gt: $date}) {
     items {
       title
       subtitle
@@ -80,6 +97,9 @@ query ($limit: Int) {
       author
       system {
         uid
+        publish_details {
+          time
+        }
       }
       url {
         hosted_url
@@ -89,12 +109,11 @@ query ($limit: Int) {
   }
 }
 `,
-      variables: { limit: 10 },
-    }),
-    method: "POST",
-  });
+    {
+      date: oneWeekAgo.toISOString(),
+    }
+  );
 
-  const articlesResponse = getObject(await result.json());
   assertIsObject(articlesResponse.data);
   assertIsObject(articlesResponse.data.articles);
 
@@ -105,10 +124,7 @@ query ($limit: Int) {
   const articles = getArrayOf(
     articlesResponse.data.articles.items,
     getArticleObject
-  )
-    .map((item) => ({ item, date: new Date(item.date).valueOf() }))
-    .sort((a, b) => b.date - a.date)
-    .map(({ item }) => item);
+  );
 
   return articles.map((item) => {
     const date = new Date(item.date);

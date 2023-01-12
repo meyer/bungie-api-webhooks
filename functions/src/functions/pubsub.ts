@@ -52,7 +52,7 @@ export const webhookMessagePublished = functions.pubsub
         eventName === "updateArticleCreate" ||
         eventName === "hotfixArticleCreate"
       ) {
-        const articleDate = new Date(event.article.date);
+        const articleDate = new Date(event.article.publishDate);
 
         discordPayload.username = event.article.author;
         if (webhookFormat === "discordForum") {

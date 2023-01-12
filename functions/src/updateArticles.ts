@@ -47,6 +47,7 @@ export const updateArticles = async () => {
     const articleRef = articleCollection.doc(article.uid);
     batch.set(articleRef, {
       ...article,
+      publishDateTimestamp: Timestamp.fromDate(new Date(article.publishDate)),
       dateTimestamp: Timestamp.fromDate(new Date(article.date)),
     });
   }
@@ -54,6 +55,7 @@ export const updateArticles = async () => {
 
   const writeResult = await batch.commit();
   return {
+    fetchedArticleCount: articles.length,
     updatedArticleCount: writeResult.filter((result) => !result.isEqual).length,
   };
 };

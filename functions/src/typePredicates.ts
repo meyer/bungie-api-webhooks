@@ -28,6 +28,12 @@ export function getArticleObject(item: unknown) {
 
   assertIsObject(item.system);
   assert("uid" in item.system && typeof item.system.uid === "string");
+  assert("publish_details" in item.system);
+  assertIsObject(item.system.publish_details);
+  assert(
+    "time" in item.system.publish_details &&
+      typeof item.system.publish_details.time === "string"
+  );
 
   assertIsObject(item.url);
   assert("hosted_url" in item.url && typeof item.url.hosted_url === "string");
@@ -38,6 +44,7 @@ export function getArticleObject(item: unknown) {
     url: item.url.hosted_url.trim(),
     author: item.author.trim(),
     date: item.date.trim(),
+    publishDate: item.system.publish_details.time.trim(),
     uid: item.system.uid.trim(),
   };
 }
