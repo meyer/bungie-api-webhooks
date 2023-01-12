@@ -31,3 +31,12 @@ export const articles = Object.fromEntries(
     ] as const;
   })
 );
+
+export const whereTwab = functions.https.onRequest(async (req, res) => {
+  try {
+    await updateArticles();
+    res.send("TWAB check complete");
+  } catch (error) {
+    res.status(500).send("Something went wrong");
+  }
+});
