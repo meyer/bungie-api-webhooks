@@ -23,11 +23,11 @@ export const checkAll = functions
 export const checkBungie = functions
   .runWith({
     // fail quickly since this check runs frequently
-    timeoutSeconds: 10,
+    timeoutSeconds: 5,
   })
   .pubsub.schedule(
-    // every five minutes
-    "*/5 * * * *"
+    // every two minutes
+    "*/2 * * * *"
   )
   .timeZone(bungieTimeZone)
   .onRun(async () => {
