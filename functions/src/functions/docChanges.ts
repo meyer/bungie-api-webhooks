@@ -92,7 +92,10 @@ export const metadataUpdate = functions.firestore
       return;
     }
 
-    functions.logger.info("Ignoring %s metadata update", key);
+    functions.logger.info("Ignoring %s metadata update", key, {
+      beforeData,
+      afterData,
+    });
   });
 
 export const settingsUpdate = functions.firestore
