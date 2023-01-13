@@ -83,7 +83,7 @@ export const metadataUpdate = functions.firestore
         const { disabledSystems: oldDisabledSystems } = beforeData;
         const { disabledSystems: newDisabledSystems } = afterData;
 
-        const { onlyInA: newlyEnabledSystemd, onlyInB: newlyDisabledSystems } =
+        const { onlyInA: newlyEnabledSystems, onlyInB: newlyDisabledSystems } =
           arrayDiff(oldDisabledSystems as any, newDisabledSystems as any);
 
         if (newlyDisabledSystems.length !== 0) {
@@ -93,10 +93,10 @@ export const metadataUpdate = functions.firestore
           );
         }
 
-        if (newlyEnabledSystemd.length !== 0) {
+        if (newlyEnabledSystems.length !== 0) {
           functions.logger.info(
             "Newly enabled systems: %s",
-            newlyEnabledSystemd.join(", ")
+            newlyEnabledSystems.join(", ")
           );
         }
       }
