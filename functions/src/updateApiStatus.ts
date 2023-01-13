@@ -4,10 +4,6 @@ import functions from "firebase-functions";
 import { BungieApiError, bungieGetCommonSettings } from "./bungieApi.js";
 import { firestore } from "./firestore.js";
 
-const interestingSystems = {
-  Destiny2: true,
-};
-
 export const updateApiStatus = async () => {
   let isEnabled = true;
   let lastErrorCode: PlatformErrorCodes | null = null;
@@ -20,13 +16,6 @@ export const updateApiStatus = async () => {
     for (const [systemName, { enabled }] of Object.entries(
       commonSettings.systems
     )) {
-      if (
-        !systemName.startsWith("D2") &&
-        !interestingSystems.hasOwnProperty(systemName)
-      ) {
-        continue;
-      }
-
       if (enabled) {
         enabledSystems.push(systemName);
       } else {
