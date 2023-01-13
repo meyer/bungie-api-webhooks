@@ -1,6 +1,7 @@
 import assert from "assert";
 import * as functions from "firebase-functions";
 
+import { arrayDiff } from "../arrayDiff.js";
 import type { ContentStackArticle } from "../contentStack.js";
 import { dispatchWebhookMessagesForEvent } from "../dispatchWebhookMessagesForEvent.js";
 
@@ -78,6 +79,28 @@ export const metadataUpdate = functions.firestore
         return;
       }
     } else if (key === "api") {
+      if (beforeData && afterData) {
+        const { disabledSystems: oldDisabledSystems } = beforeData;
+        const { disabledSystems: newDisabledSystems } = afterData;
+
+        const { onlyInA: newlyEnabledSystemd, onlyInB: newlyDisabledSystems } =
+          arrayDiff(oldDisabledSystems as any, newDisabledSystems as any);
+
+        if (newlyDisabledSystems.length !== 0) {
+          functions.logger.info(
+            "Newly disabled systems: %s",
+            newlyDisabledSystems.join(", ")
+          );
+        }
+
+        if (newlyEnabledSystemd.length !== 0) {
+          functions.logger.info(
+            "Newly enabled systems: %s",
+            newlyEnabledSystemd.join(", ")
+          );
+        }
+      }
+
       if (!beforeData || beforeData.isEnabled !== afterData.isEnabled) {
         functions.logger.info("API status updated!");
         functions.logger.info("Previously enabled: %s", beforeData?.isEnabled);
