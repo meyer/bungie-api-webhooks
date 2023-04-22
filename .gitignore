@@ -1,7 +1,5 @@
+.dev.vars
 .env
 .env.*
 /lib
-/.firebase
 *.log
-/emulator-cache
-/functions/lib

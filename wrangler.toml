@@ -1,0 +1,36 @@
+name = "bungie"
+main = "src/index.ts"
+compatibility_date = "2023-04-13"
+
+kv_namespaces = [
+  { binding = "DESTINY_DEFINITIONS", id = "8115761ab4e8442d9a0dbe15ff603838", preview_id = "012d5dbdd8c8487c97b409f22903a940" },
+]
+
+analytics_engine_datasets = [
+  { binding = "BUNGIE_API_STATUS" },
+  { binding = "BUNGIE_MANIFEST_STATUS" },
+]
+
+[triggers]
+crons = ["*/1 * * * *"]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ApiStatusChecker", "ArticleChecker", "ManifestChecker"]
+
+[durable_objects]
+bindings = [
+  { name = "API_STATUS_CHECKER_DO", class_name = "ApiStatusChecker" },
+  { name = "ARTICLE_CHECKER_DO", class_name = "ArticleChecker" },
+  { name = "MANIFEST_CHECKER_DO", class_name = "ManifestChecker" },
+]
+
+[[queues.producers]]
+queue = "bungie-api-status-analytics"
+binding = "API_STATUS_QUEUE"
+
+[[queues.consumers]]
+queue = "bungie-api-status-analytics"
+max_batch_size = 25
+max_batch_timeout = 10
+max_retries = 10

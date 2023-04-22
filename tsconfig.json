@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "lib": [
-      "ESNext",
-      // not great but node-fetch uses globals that are now DOM-only
-      "DOM"
+      "ESNext"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
     ],
     "outDir": "lib",
     "sourceMap": true,
