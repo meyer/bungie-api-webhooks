@@ -29,6 +29,10 @@ bindings = [
 queue = "bungie-api-status-analytics"
 binding = "API_STATUS_QUEUE"
 
+[[queues.producers]]
+queue = "bungie-article-queue"
+binding = "ARTICLE_QUEUE"
+
 [[queues.consumers]]
 queue = "bungie-api-status-analytics"
 max_batch_size = 25

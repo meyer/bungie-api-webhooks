@@ -16,7 +16,7 @@ import type { BungieApiWebhooksWorkerEnv } from "../types";
 export class ArticleChecker implements DurableObject {
   constructor(
     private state: DurableObjectState,
-    env: BungieApiWebhooksWorkerEnv
+    private env: BungieApiWebhooksWorkerEnv
   ) {
     this.bungieClient = getBungieApiClient({
       apiKey: env.BUNGIE_API_KEY,
@@ -43,6 +43,7 @@ export class ArticleChecker implements DurableObject {
       for (const article of articles) {
         if (seenArticles.has(article.uid)) continue;
         newArticles.push(article);
+        await this.env.ARTICLE_QUEUE.send(article);
         this.state.storage.put(article.uid, article);
       }
 

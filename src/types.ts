@@ -1,8 +1,11 @@
+import type { ContentStackArticle } from "@workers-utils/bungie";
+
 export interface BungieApiWebhooksWorkerEnv {
   BUNGIE_API_KEY: string;
   BUNGIE_API_ORIGIN: string;
 
   API_STATUS_QUEUE: Queue<AnalyticsEngineDataPoint>;
+  ARTICLE_QUEUE: Queue<ContentStackArticle>;
 
   DESTINY_DEFINITIONS: KVNamespace;
 
