@@ -3,20 +3,21 @@
   "private": true,
   "scripts": {
     "lint": "eslint .",
-    "publish": "wrangler publish",
+    "publish": "wrangler deploy",
     "tail": "wrangler tail"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20230404.0",
-    "@meyer/eslint-config": "^0.0.5",
+    "@cloudflare/workers-types": "^4.20230518.0",
+    "@meyer/eslint-config": "latest",
     "@types/format-util": "^1.0.2",
     "@workers-utils/common": "canary",
     "@workers-utils/bungie": "canary",
+    "@workers-utils/discord": "canary",
     "bungie-api-ts": "^4.22.2",
     "eslint": "^8.38.0",
     "format-util": "^1.0.5",
     "typescript": "^5.0.4",
-    "wrangler": "^2.16.0",
+    "wrangler": "^3.0.1",
     "zod": "^3.21.4"
   }
 }

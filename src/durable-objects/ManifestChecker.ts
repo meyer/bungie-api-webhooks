@@ -29,11 +29,11 @@ export class ManifestChecker implements DurableObject {
   private manifestVersion: string | null = null;
 
   async fetch(request: Request) {
-    try {
-      const body = (await request.json()) as
-        | { method: "fetch" }
-        | { method: "scheduled"; cron: string; scheduledTime: string };
+    const body = (await request.json()) as
+      | { method: "fetch" }
+      | { method: "scheduled"; cron: string; scheduledTime: number };
 
+    try {
       const manifest = await this.bungieClient.getDestinyManifest();
       if (manifest.Response.version !== this.manifestVersion) {
         this.manifestVersion = manifest.Response.version;
@@ -47,7 +47,7 @@ export class ManifestChecker implements DurableObject {
       if (body.method === "scheduled" && this.env.BUNGIE_MANIFEST_STATUS) {
         this.env.BUNGIE_MANIFEST_STATUS.writeDataPoint({
           blobs: [manifest.Response.version],
-          doubles: [manifest.ErrorCode],
+          doubles: [manifest.ErrorCode, body.scheduledTime],
         });
       } else {
         console.log("manifestVersion", manifest.Response.version);
@@ -59,6 +59,15 @@ export class ManifestChecker implements DurableObject {
       });
     } catch (error) {
       if (error instanceof BungieApiError) {
+        if (body.method === "scheduled" && this.env.BUNGIE_MANIFEST_STATUS) {
+          this.env.BUNGIE_MANIFEST_STATUS.writeDataPoint({
+            blobs: [error.errorStatus],
+            doubles: [error.errorCode, body.scheduledTime],
+          });
+        } else {
+          console.log("Bungie API error:", error.errorCode, error.errorStatus);
+        }
+
         return new JsonResponse({
           bungieErrorCode: error.errorCode,
           bungieErrorStatus: error.errorStatus,

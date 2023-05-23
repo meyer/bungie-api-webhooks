@@ -11,6 +11,10 @@ analytics_engine_datasets = [
   { binding = "BUNGIE_MANIFEST_STATUS" },
 ]
 
+[vars]
+DISCORD_APPLICATION_ID = '882432198366625893'
+DISCORD_ERROR_CHANNEL = '881614167084261426'
+
 [triggers]
 crons = ["*/1 * * * *"]
 

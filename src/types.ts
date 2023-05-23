@@ -4,6 +4,10 @@ export interface BungieApiWebhooksWorkerEnv {
   BUNGIE_API_KEY: string;
   BUNGIE_API_ORIGIN: string;
 
+  DISCORD_APPLICATION_ID: string;
+  DISCORD_BOT_TOKEN: string;
+  DISCORD_ERROR_CHANNEL: string;
+
   API_STATUS_QUEUE: Queue<AnalyticsEngineDataPoint>;
   ARTICLE_QUEUE: Queue<ContentStackArticle>;
 

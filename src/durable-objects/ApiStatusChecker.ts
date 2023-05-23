@@ -23,14 +23,17 @@ export class ApiStatusChecker implements DurableObject {
   async fetch(request: Request) {
     const body = (await request.json()) as
       | { method: "fetch" }
-      | { method: "scheduled"; cron: string; scheduledTime: string };
+      | { method: "scheduled"; cron: string; scheduledTime: number };
 
     let lastErrorCode: PlatformErrorCodes | null = null;
     let lastErrorStatus: string | null = null;
     const enabledSystems: string[] = [];
-    const disabledSystems: string[] = [];
 
     const oldStatus = await this.state.storage.list();
+    const oldEnabledSystemsValue = oldStatus.get("enabledSystems");
+    const oldEnabledSystems = Array.isArray(oldEnabledSystemsValue)
+      ? oldEnabledSystemsValue
+      : [];
 
     try {
       const commonSettings = await this.bungieClient.getCommonSettings();
@@ -40,26 +43,25 @@ export class ApiStatusChecker implements DurableObject {
       for (const [systemName, metadata] of Object.entries(
         commonSettings.Response.systems
       ).sort(([a], [b]) => a.localeCompare(b))) {
+        // if (body.method === "scheduled") {
+        //   this.env.API_STATUS_QUEUE.send({
+        //     blobs: [systemName],
+        //     doubles: [metadata.enabled ? 1 : 0, body.scheduledTime],
+        //     indexes: [systemName],
+        //   });
+        // }
+
         if (metadata.enabled) {
           enabledSystems.push(systemName);
-        } else {
-          disabledSystems.push(systemName);
         }
 
-        if (body.method === "scheduled" && this.env.BUNGIE_API_STATUS) {
-          this.env.API_STATUS_QUEUE.send({
-            blobs: [systemName],
-            doubles: [metadata.enabled ? 1 : 0],
-            indexes: [systemName],
-          });
-        } else {
+        if (body.method === "fetch") {
           console.log("System:", metadata.enabled ? "✅" : "⛔", systemName);
         }
       }
 
-      const oldEnabledSystems = oldStatus.get("enabledSystems");
       const enabledSystemsChanges = arrayDiff(
-        Array.isArray(oldEnabledSystems) ? oldEnabledSystems : [],
+        oldEnabledSystems,
         enabledSystems
       );
 
@@ -73,7 +75,6 @@ export class ApiStatusChecker implements DurableObject {
           lastErrorCode,
           lastErrorStatus,
           enabledSystems,
-          disabledSystems,
         });
       }
 
